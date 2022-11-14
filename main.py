@@ -91,6 +91,8 @@ def move(game_state: typing.Dict) -> typing.Dict:
     # TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
     # food = game_state['board']['food']
 
+    # TODO: Step 5 check 1 move before
+
     print(f"MOVE {game_state['turn']}: {next_move}")
     return {"move": next_move}
 
