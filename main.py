@@ -74,13 +74,13 @@ def move(game_state: typing.Dict) -> typing.Dict:
     for snake in opponents:
       body = snake["body"]
       for cell in body:
-        if cell["x"] == my_head["x"] + 1 and cell["y"] == my_head["y"]
+        if cell["x"] == my_head["x"] + 1 and cell["y"] == my_head["y"]:
           is_move_safe["right"] = False
-        if cell["x"] == my_head["x"] - 1 and cell["y"] == my_head["y"]
+        if cell["x"] == my_head["x"] - 1 and cell["y"] == my_head["y"]:
           is_move_safe["left"] = False
-        if cell["y"] == my_head["y"] + 1 and cell["x"] == my_head["x"]
+        if cell["y"] == my_head["y"] + 1 and cell["x"] == my_head["x"]:
           is_move_safe["up"] = False
-        if cell["y"] == my_head["y"] - 1 and cell["x"] == my_head["x"]
+        if cell["y"] == my_head["y"] - 1 and cell["x"] == my_head["x"]:
           is_move_safe["down"] = False
         # still no guarentee
 
@@ -98,8 +98,29 @@ def move(game_state: typing.Dict) -> typing.Dict:
     next_move = random.choice(safe_moves)
 
     # TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
-    # food = game_state['board']['food']
+    food = game_state['board']['food']
+    if not food:
+        return {"move": next_move}
 
+    # Target the food closest to the snake head
+    target_food = (food[0]["x"], food[0]["y"])
+    for f in food[1:]:
+        x_diff = max(my_head["x"], f["x"]) - min(my_head["x"], f["x"])
+        y_diff = max(my_head["y"], f["y"]) - min(my_head["y"], f["y"])
+
+        if (x_diff, y_diff) < target_food:
+            target_food = (f["x"], f["y"])
+    
+    # Move closer towards food location if safe
+    if target_food[0] > my_head["x"] and is_move_safe["right"]:
+        next_move = "right"
+    elif target_food[0] < my_head["x"] and is_move_safe["left"]:
+        next_move = "left"
+    elif target_food[1] > my_head["y"] and is_move_safe["up"]:
+        next_move = "up"
+    elif target_food[1] < my_head["y"] and is_move_safe["down"]:
+        next_move = "down"
+    
     print(f"MOVE {game_state['turn']}: {next_move}")
     return {"move": next_move}
 
