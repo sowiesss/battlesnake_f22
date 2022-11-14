@@ -86,16 +86,7 @@ def move(game_state: typing.Dict) -> typing.Dict:
     opponents = game_state['board']['snakes']
     for snake in opponents:
       body = snake["body"]
-      for cell in body:
-        if cell["x"] == my_head["x"] + 1 and cell["y"] == my_head["y"]:
-          is_move_safe["right"] = False
-        if cell["x"] == my_head["x"] - 1 and cell["y"] == my_head["y"]:
-          is_move_safe["left"] = False
-        if cell["y"] == my_head["y"] + 1 and cell["x"] == my_head["x"]:
-          is_move_safe["up"] = False
-        if cell["y"] == my_head["y"] - 1 and cell["x"] == my_head["x"]:
-          is_move_safe["down"] = False
-        # still no guarentee
+      check_moves(body, my_head, is_move_safe)
 
     # Are there any safe moves left?
     safe_moves = []
@@ -111,6 +102,8 @@ def move(game_state: typing.Dict) -> typing.Dict:
     next_move = random.choice(safe_moves)
 
     # TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
+
+    # TODO: Step 5 check 1 move before
     food = game_state['board']['food']
     if not food:
         return {"move": next_move}
@@ -133,11 +126,21 @@ def move(game_state: typing.Dict) -> typing.Dict:
         next_move = "up"
     elif target_food[1] < my_head["y"] and is_move_safe["down"]:
         next_move = "down"
-    
+
     print(f"MOVE {game_state['turn']}: {next_move}")
     return {"move": next_move}
 
-
+def check_moves(moves: typing.Dict, my_head: typing.Dict, is_move_safe: typing.Dict):
+      for cell in moves:
+        if cell["x"] == my_head["x"] + 1 and cell["y"] == my_head["y"]:
+          is_move_safe["right"] = False
+        if cell["x"] == my_head["x"] - 1 and cell["y"] == my_head["y"]:
+          is_move_safe["left"] = False
+        if cell["y"] == my_head["y"] + 1 and cell["x"] == my_head["x"]:
+          is_move_safe["up"] = False
+        if cell["y"] == my_head["y"] - 1 and cell["x"] == my_head["x"]:
+          is_move_safe["down"] = False
+  
 # Start server when `python main.py` is run
 if __name__ == "__main__":
     from server import run_server
