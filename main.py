@@ -109,7 +109,7 @@ def move(game_state: typing.Dict) -> typing.Dict:
         y_diff = max(my_head["y"], f["y"]) - min(my_head["y"], f["y"])
 
         if (x_diff, y_diff) < target_food:
-            target_food = (x_diff, y_diff)
+            target_food = (f["x"], f["y"])
     
     # Move closer towards food location if safe
     if target_food[0] > my_head["x"] and is_move_safe["right"]:
