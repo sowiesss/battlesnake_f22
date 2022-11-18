@@ -50,47 +50,16 @@ def move(game_state: typing.Dict) -> typing.Dict:
     my_head = game_state["you"]["body"][0]  # Coordinates of your head
     my_neck = game_state["you"]["body"][1]  # Coordinates of your "neck"
 
-    if my_neck["x"] < my_head["x"]:  # Neck is left of head, don't move left
-        is_move_safe["left"] = False
-
-    elif my_neck["x"] > my_head["x"]:  # Neck is right of head, don't move right
-        is_move_safe["right"] = False
-
-    elif my_neck["y"] < my_head["y"]:  # Neck is below head, don't move down
-        is_move_safe["down"] = False
-
-    elif my_neck["y"] > my_head["y"]:  # Neck is above head, don't move up
-        is_move_safe["up"] = False
-
     # TODO: Step 1 - Prevent your Battlesnake from moving out of bounds
     # board_width = game_state['board']['width']
     # board_height = game_state['board']['height']
 
-    if my_head["x"] == 0:
-        is_move_safe["left"] = False
-    if my_head["x"] == game_state['board']['width'] -1:
-        is_move_safe["right"] = False
-    if my_head["y"] == 0:
-        is_move_safe["down"] = False
-    if my_head["y"] == game_state['board']['height'] -1:
-        is_move_safe["up"] = False
+    check_wall(my_head, game_state, is_move_safe)
     print(f"step 1 {is_move_safe}")
-
+  
     # TODO: Step 2 - Prevent your Battlesnake from colliding with itself
     my_body = game_state['you']['body']
-
-    for cell in my_body:
-        if cell["x"] == my_head["x"] - 1 and cell["y"] == my_head["y"]:  # Body cell is left of head, don't move left
-            is_move_safe["left"] = False
-
-        if cell["x"] == my_head["x"] + 1 and cell["y"] == my_head["y"]:  # Body cell is right of head, don't move right
-            is_move_safe["right"] = False
-
-        if cell["x"] == my_head["x"] and cell["y"] == my_head["y"] - 1:  # Body cell is below head, don't move down
-            is_move_safe["down"] = False
-
-        if cell["x"] == my_head["x"] and cell["y"] == my_head["y"] + 1:  # Body cell is above head, don't move up
-            is_move_safe["up"] = False
+    check_self(my_neck, my_body, my_head, is_move_safe)
     print(f"step 2 {is_move_safe}")
 
     # TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
@@ -109,6 +78,10 @@ def move(game_state: typing.Dict) -> typing.Dict:
         print(f"MOVE {game_state['turn']}: No safe moves detected! Moving down")
         return {"move": "down"}
 
+    new_safe_moves = {"up": True, "down": True, "left": True, "right": True}
+    check_moves(safe_moves, my_head, new_safe_moves)
+    # TODO: 
+  
     # Choose a random move from the safe ones
     next_move = random.choice(safe_moves)
 
@@ -141,7 +114,37 @@ def move(game_state: typing.Dict) -> typing.Dict:
     print(f"MOVE {game_state['turn']}: {next_move}")
     return {"move": next_move}
 
-def check_moves(moves: typing.Dict, my_head: typing.Dict, is_move_safe: typing.Dict):
+
+def check_moves(moves, my_head, my_neck, my_body, game_state, is_move_safe):
+  dict = {}
+  for move in moves:
+    if move == "up":
+      new_head = {"x": my_head["x"], "y":  my_head["y"]+1}
+    if move == "down":
+      new_head = {"x": my_head["x"], "y":  my_head["y"]-1}
+    if move == "left":
+      new_head = {"x": my_head["x"]-1, "y":  my_head["y"]}
+    if move == "right":
+      new_head = {"x": my_head["x"]+1, "y":  my_head["y"]}
+  
+    new_body = my_body.copy()
+    new_body.pop()
+    new_body.insert(0, new_head)
+    check_wall(new_body[0], game_state, is_move_safe)
+    check_self(new_body[1], new_body, new_body[0], is_move_safe)
+    
+    opponents = game_state['board']['snakes']
+    for snake in opponents:
+      body = snake["body"]
+      check_others(body, my_head, is_move_safe)
+      
+    dict[move]=len(is_move_safe)
+
+  return dict
+    
+
+
+def check_others(moves: typing.Dict, my_head: typing.Dict, is_move_safe: typing.Dict):
       for cell in moves:
         if cell["x"] == my_head["x"] + 1 and cell["y"] == my_head["y"]:
           is_move_safe["right"] = False
@@ -151,7 +154,35 @@ def check_moves(moves: typing.Dict, my_head: typing.Dict, is_move_safe: typing.D
           is_move_safe["up"] = False
         if cell["y"] == my_head["y"] - 1 and cell["x"] == my_head["x"]:
           is_move_safe["down"] = False
-  
+
+
+def check_self(my_neck, my_body, my_head, is_move_safe):
+   for cell in my_body:
+      if cell["x"] == my_head["x"] - 1 and cell["y"] == my_head["y"]:  # Body cell is left of head, don't move left
+          is_move_safe["left"] = False
+
+      if cell["x"] == my_head["x"] + 1 and cell["y"] == my_head["y"]:  # Body cell is right of head, don't move right
+          is_move_safe["right"] = False
+
+      if cell["x"] == my_head["x"] and cell["y"] == my_head["y"] - 1:  # Body cell is below head, don't move down
+          is_move_safe["down"] = False
+
+      if cell["x"] == my_head["x"] and cell["y"] == my_head["y"] + 1:  # Body cell is above head, don't move up
+          is_move_safe["up"] = False
+
+
+def check_wall(my_head, game_state, is_move_safe):
+  if my_head["x"] == 0:
+      is_move_safe["left"] = False
+  if my_head["x"] == game_state['board']['width'] -1:
+      is_move_safe["right"] = False
+  if my_head["y"] == 0:
+      is_move_safe["down"] = False
+  if my_head["y"] == game_state['board']['height'] -1:
+      is_move_safe["up"] = False
+  print(f"step 1 {is_move_safe}")
+
+        
 # Start server when `python main.py` is run
 if __name__ == "__main__":
     from server import run_server
