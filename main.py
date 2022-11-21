@@ -29,7 +29,6 @@ def info() -> typing.Dict:
   }
 
 
-
 # start is called when your Battlesnake begins a game
 def start(game_state: typing.Dict):
   print("GAME START")
@@ -51,19 +50,18 @@ def move(game_state: typing.Dict) -> typing.Dict:
   my_head = game_state["you"]["body"][0]  # Coordinates of your head
   my_neck = game_state["you"]["body"][1]  # Coordinates of your "neck"
 
-  # TODO: Step 1 - Prevent your Battlesnake from moving out of bounds
+  # Step 1 - Prevent your Battlesnake from moving out of bounds
   # board_width = game_state['board']['width']
   # board_height = game_state['board']['height']
-
   check_wall(my_head, game_state, is_move_safe)
   print(f"step 1 {is_move_safe}")
 
-  # TODO: Step 2 - Prevent your Battlesnake from colliding with itself
+  # Step 2 - Prevent your Battlesnake from colliding with itself
   my_body = game_state['you']['body']
   check_self(my_neck, my_body, my_head, is_move_safe)
   print(f"step 2 {is_move_safe}")
 
-  # TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
+  # Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
   opponents = game_state['board']['snakes']
   for snake in opponents:
     body = snake["body"]
@@ -79,19 +77,15 @@ def move(game_state: typing.Dict) -> typing.Dict:
   if len(safe_moves) == 0:
     print(f"MOVE {game_state['turn']}: No safe moves detected! Moving down")
     return {"move": "down"}
- 
+
+  # Secondary check to prioritize the most safe moves
   dict1 = check_moves(safe_moves, my_head, my_neck, my_body, game_state)
-  print(dict1)
-  sorted_keys = sorted(dict1, key=dict1.get, reverse=True)
-  print(sorted_keys)
-  # TODO:
+  priority_moves = sorted(dict1, key=dict1.get, reverse=True)
 
-  # Choose a random move from the safe ones
-  next_move = random.choice(safe_moves)
+  # Choose the safest moves from the ones available
+  next_move = priority_moves[0]
 
-  # TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
-
-  # TODO: Step 5 check 1 move before
+  # Step 4 - Move towards food to regain health and survive longer
   food = game_state['board']['food']
   if not food:
     return {"move": next_move}
@@ -99,13 +93,28 @@ def move(game_state: typing.Dict) -> typing.Dict:
   # Target the food closest to the snake head
   target_food = (food[0]["x"], food[0]["y"])
   for f in food[1:]:
-    x_diff = max(my_head["x"], f["x"]) - min(my_head["x"], f["x"])
-    y_diff = max(my_head["y"], f["y"]) - min(my_head["y"], f["y"])
+    x_diff = abs(my_head["x"] - f["x"])
+    y_diff = abs(my_head["y"] - f["y"])
 
     if (x_diff, y_diff) < target_food:
       target_food = (f["x"], f["y"])
 
-  # Move closer towards food location if safe
+  # Only pursue food if health starts to get low
+  distance = abs(target_food[0] - my_head["x"]) + abs(target_food[1] -
+                                                      my_head["y"])
+  BUFFER = 10
+  print('---------------------------------------')
+  if game_state["you"]["health"] <= (distance + BUFFER):
+    next_move = move_towards_food(target_food, my_head, is_move_safe)
+    print(target_food, next_move)
+
+  print(f"MOVE {game_state['turn']}: {next_move}")
+  return {"move": next_move}
+
+
+# Helper function that moves snake towards food target
+def move_towards_food(target_food, my_head, is_move_safe):
+  next_move = None
   if target_food[0] > my_head["x"] and is_move_safe["right"]:
     next_move = "right"
   elif target_food[0] < my_head["x"] and is_move_safe["left"]:
@@ -115,13 +124,13 @@ def move(game_state: typing.Dict) -> typing.Dict:
   elif target_food[1] < my_head["y"] and is_move_safe["down"]:
     next_move = "down"
 
-  print(f"MOVE {game_state['turn']}: {next_move}")
-  return {"move": next_move}
+  return next_move
 
 
+# Helper function that scores the safety of each potential move
 def check_moves(moves, my_head, my_neck, my_body, game_state):
   dict = {}
-  
+
   for move in moves:
     is_move_safe = {"up": True, "down": True, "left": True, "right": True}
     if move == "up":
@@ -144,11 +153,11 @@ def check_moves(moves, my_head, my_neck, my_body, game_state):
       body = snake["body"]
       check_others(body, my_head, is_move_safe)
 
-    dict[move] = filter(lambda x: x == True, is_move_safe.values())
-    print(dict[move])
+    dict[move] = len(list(filter(lambda x: x == True, is_move_safe.values())))
   return dict
 
 
+# Helper function that prevents snake from colliding with opponents
 def check_others(moves: typing.Dict, my_head: typing.Dict,
                  is_move_safe: typing.Dict):
   for cell in moves:
@@ -162,6 +171,7 @@ def check_others(moves: typing.Dict, my_head: typing.Dict,
       is_move_safe["down"] = False
 
 
+# Helper function that prevents snake from colliding with itself
 def check_self(my_neck, my_body, my_head, is_move_safe):
   for cell in my_body:
     if cell["x"] == my_head["x"] - 1 and cell["y"] == my_head[
@@ -181,6 +191,7 @@ def check_self(my_neck, my_body, my_head, is_move_safe):
       is_move_safe["up"] = False
 
 
+# Helper function that prevents snake from colliding with wall
 def check_wall(my_head, game_state, is_move_safe):
   if my_head["x"] == 0:
     is_move_safe["left"] = False
