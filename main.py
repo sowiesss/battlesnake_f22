@@ -81,6 +81,7 @@ def move(game_state: typing.Dict) -> typing.Dict:
     return {"move": "down"}
  
   dict1 = check_moves(safe_moves, my_head, my_neck, my_body, game_state)
+  print(dict1)
   sorted_keys = sorted(dict1, key=dict1.get, reverse=True)
   print(sorted_keys)
   # TODO:
@@ -143,7 +144,7 @@ def check_moves(moves, my_head, my_neck, my_body, game_state):
       body = snake["body"]
       check_others(body, my_head, is_move_safe)
 
-    dict[move] = len(is_move_safe.values().filter(lambda x: x == True))
+    dict[move] = filter(lambda x: x == True, is_move_safe.values())
     print(dict[move])
   return dict
 
