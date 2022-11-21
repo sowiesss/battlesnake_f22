@@ -79,9 +79,10 @@ def move(game_state: typing.Dict) -> typing.Dict:
   if len(safe_moves) == 0:
     print(f"MOVE {game_state['turn']}: No safe moves detected! Moving down")
     return {"move": "down"}
-
-  new_safe_moves = {"up": True, "down": True, "left": True, "right": True}
-  check_moves(safe_moves, my_head, new_safe_moves)
+ 
+  dict1 = check_moves(safe_moves, my_head, my_neck, my_body, game_state)
+  sorted_keys = sorted(dict1, key=dict1.get, reverse=True)
+  print(sorted_keys)
   # TODO:
 
   # Choose a random move from the safe ones
@@ -117,9 +118,11 @@ def move(game_state: typing.Dict) -> typing.Dict:
   return {"move": next_move}
 
 
-def check_moves(moves, my_head, my_neck, my_body, game_state, is_move_safe):
+def check_moves(moves, my_head, my_neck, my_body, game_state):
   dict = {}
+  
   for move in moves:
+    is_move_safe = {"up": True, "down": True, "left": True, "right": True}
     if move == "up":
       new_head = {"x": my_head["x"], "y": my_head["y"] + 1}
     if move == "down":
@@ -140,8 +143,8 @@ def check_moves(moves, my_head, my_neck, my_body, game_state, is_move_safe):
       body = snake["body"]
       check_others(body, my_head, is_move_safe)
 
-    dict[move] = len(is_move_safe)
-
+    dict[move] = len(is_move_safe.values().filter(lambda x: x == True))
+    print(dict[move])
   return dict
 
 
