@@ -205,12 +205,12 @@ def move(game_state: typing.Dict) -> typing.Dict:
     # also avoid close to others
     snd_others_cnt = 0
     thd_others_cnt = 0
-    if snd_cnt > 0:
+    if snd_ok:
       for c in others_cells:
         if is_next_to(snd_head, c, 2):
           snd_others_cnt += 1
 
-    if thd_cnt > 0 and thd_cnt >= snd_cnt:
+    if thd_ok:
       for c in others_cells:
         if is_next_to(thd_head, c, 2):
           thd_others_cnt += 1
@@ -224,11 +224,10 @@ def move(game_state: typing.Dict) -> typing.Dict:
     elif snd_others_cnt == thd_others_cnt and snd_cnt > thd_cnt:
       next_move = snd_choice
       print(f"226 next: {next_move}")
-    elif thd_cnt > 0 and snd_others_cnt == thd_others_cnt and snd_cnt > thd_cnt:
+    elif thd_cnt > 0 and snd_others_cnt == thd_others_cnt and snd_cnt >= thd_cnt:
       next_move = thd_choice
-      print(f"223 next: {next_move}"
-
-    
+      print(f"223 next: {next_move}")
+            
   print(f"health:{my_health}")
   print(f"MOVE {game_state['turn']}: {next_move}")
   print('---------------------------------------')
