@@ -12,7 +12,7 @@
 
 import random
 import typing
-
+import copy
 
 # info is called when you create your Battlesnake on play.battlesnake.com
 # and controls your Battlesnake's appearance
@@ -53,20 +53,21 @@ def move(game_state: typing.Dict) -> typing.Dict:
   # Step 1 - Prevent your Battlesnake from moving out of bounds
   # board_width = game_state['board']['width']
   # board_height = game_state['board']['height']
-  check_wall(my_head, game_state, is_move_safe)
-  print(f"step 1 {is_move_safe}")
+  check_wall_collision(my_head, game_state, is_move_safe)
+  # print(f"step 1 {is_move_safe}")
 
   # Step 2 - Prevent your Battlesnake from colliding with itself
   my_body = game_state['you']['body']
-  check_self(my_neck, my_body, my_head, is_move_safe)
-  print(f"step 2 {is_move_safe}")
+  check_self_collision(my_neck, my_body, my_head, is_move_safe)
+  # print(f"step 2 {is_move_safe}")
 
   # Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
-  opponents = game_state['board']['snakes']
+  opponents = list(filter(lambda x: x != game_state['you'], game_state['board']['snakes']))
   for snake in opponents:
     body = snake["body"]
-    check_others(body, my_head, is_move_safe)
-  print(f"step 3 {is_move_safe}")
+    check_body_collision(body, my_head, is_move_safe)
+    check_head_collision(snake, game_state['you'], is_move_safe)
+  # print(f"step 3 {is_move_safe}")
 
   # Are there any safe moves left?
   safe_moves = []
@@ -92,21 +93,19 @@ def move(game_state: typing.Dict) -> typing.Dict:
 
   # Target the food closest to the snake head
   target_food = (food[0]["x"], food[0]["y"])
+  distance = abs(target_food[0] - my_head["x"]) + abs(target_food[1] - my_head["y"])
   for f in food[1:]:
     x_diff = abs(my_head["x"] - f["x"])
     y_diff = abs(my_head["y"] - f["y"])
 
-    if (x_diff, y_diff) < target_food:
+    if (x_diff + y_diff) < distance:
       target_food = (f["x"], f["y"])
+      distance = abs(target_food[0] - my_head["x"]) + abs(target_food[1] - my_head["y"])
 
   # Only pursue food if health starts to get low
-  distance = abs(target_food[0] - my_head["x"]) + abs(target_food[1] -
-                                                      my_head["y"])
-  BUFFER = 10
-  print('---------------------------------------')
+  BUFFER = 20
   if game_state["you"]["health"] <= (distance + BUFFER):
     next_move = move_towards_food(target_food, my_head, is_move_safe)
-    print(target_food, next_move)
 
   print(f"MOVE {game_state['turn']}: {next_move}")
   return {"move": next_move}
@@ -142,25 +141,26 @@ def check_moves(moves, my_head, my_neck, my_body, game_state):
     if move == "right":
       new_head = {"x": my_head["x"] + 1, "y": my_head["y"]}
 
-    new_body = my_body.copy()
+    new_body = copy.deepcopy(my_body)
     new_body.pop()
     new_body.insert(0, new_head)
-    check_wall(new_body[0], game_state, is_move_safe)
-    check_self(new_body[1], new_body, new_body[0], is_move_safe)
+    check_wall_collision(new_body[0], game_state, is_move_safe)
+    check_self_collision(new_body[1], new_body, new_body[0], is_move_safe)
 
-    opponents = game_state['board']['snakes']
+    opponents = list(
+      filter(lambda x: x != game_state['you'], game_state['board']['snakes']))
     for snake in opponents:
       body = snake["body"]
-      check_others(body, my_head, is_move_safe)
+      check_body_collision(body, my_head, is_move_safe)
 
     dict[move] = len(list(filter(lambda x: x == True, is_move_safe.values())))
   return dict
 
 
-# Helper function that prevents snake from colliding with opponents
-def check_others(moves: typing.Dict, my_head: typing.Dict,
-                 is_move_safe: typing.Dict):
-  for cell in moves:
+# Helper function that prevents snake from colliding with opponents' body
+def check_body_collision(body: typing.Dict, my_head: typing.Dict,
+                         is_move_safe: typing.Dict):
+  for cell in body[1:]:
     if cell["x"] == my_head["x"] + 1 and cell["y"] == my_head["y"]:
       is_move_safe["right"] = False
     if cell["x"] == my_head["x"] - 1 and cell["y"] == my_head["y"]:
@@ -171,28 +171,50 @@ def check_others(moves: typing.Dict, my_head: typing.Dict,
       is_move_safe["down"] = False
 
 
+# Helper function that handles snake head to head collision with opponents
+def check_head_collision(opponent, my_snake, is_move_safe):
+  opp_head = opponent["head"]
+  my_head = my_snake["head"]
+
+  if in_vicinity(opp_head, (my_head["x"] + 1, my_head["y"])) and opponent["length"] >= my_snake["length"]:
+    is_move_safe["right"] = False
+  if in_vicinity(opp_head, (my_head["x"] - 1, my_head["y"])) and opponent["length"] >= my_snake["length"]:
+    is_move_safe["left"] = False
+  if in_vicinity(opp_head, (my_head["x"], my_head["y"] + 1)) and opponent["length"] >= my_snake["length"]:
+    is_move_safe["up"] = False
+  if in_vicinity(opp_head, (my_head["x"], my_head["y"] - 1)) and opponent["length"] >= my_snake["length"]:
+    is_move_safe["down"] = False
+
+
+# Helper function that checks if opponent's head is in the vicinity of the target location
+def in_vicinity(opp_head, target):
+  if opp_head["x"] == target[0] and opp_head["y"] in range(target[1] - 1, target[1] + 2):
+    return True
+
+  if opp_head["y"] == target[1] and opp_head["x"] in range(target[0] - 1, target[0] + 2):
+    return True
+
+  return False
+
+
 # Helper function that prevents snake from colliding with itself
-def check_self(my_neck, my_body, my_head, is_move_safe):
+def check_self_collision(my_neck, my_body, my_head, is_move_safe):
   for cell in my_body:
-    if cell["x"] == my_head["x"] - 1 and cell["y"] == my_head[
-        "y"]:  # Body cell is left of head, don't move left
+    if cell["x"] == my_head["x"] - 1 and cell["y"] == my_head["y"]:  # Body cell is left of head, don't move left
       is_move_safe["left"] = False
 
-    if cell["x"] == my_head["x"] + 1 and cell["y"] == my_head[
-        "y"]:  # Body cell is right of head, don't move right
+    if cell["x"] == my_head["x"] + 1 and cell["y"] == my_head["y"]:  # Body cell is right of head, don't move right
       is_move_safe["right"] = False
 
-    if cell["x"] == my_head["x"] and cell[
-        "y"] == my_head["y"] - 1:  # Body cell is below head, don't move down
+    if cell["x"] == my_head["x"] and cell["y"] == my_head["y"] - 1:  # Body cell is below head, don't move down
       is_move_safe["down"] = False
 
-    if cell["x"] == my_head["x"] and cell[
-        "y"] == my_head["y"] + 1:  # Body cell is above head, don't move up
+    if cell["x"] == my_head["x"] and cell["y"] == my_head["y"] + 1:  # Body cell is above head, don't move up
       is_move_safe["up"] = False
 
 
 # Helper function that prevents snake from colliding with wall
-def check_wall(my_head, game_state, is_move_safe):
+def check_wall_collision(my_head, game_state, is_move_safe):
   if my_head["x"] == 0:
     is_move_safe["left"] = False
   if my_head["x"] == game_state['board']['width'] - 1:
@@ -201,7 +223,6 @@ def check_wall(my_head, game_state, is_move_safe):
     is_move_safe["down"] = False
   if my_head["y"] == game_state['board']['height'] - 1:
     is_move_safe["up"] = False
-  print(f"step 1 {is_move_safe}")
 
 
 # Start server when `python main.py` is run
