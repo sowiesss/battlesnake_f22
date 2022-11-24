@@ -61,12 +61,15 @@ def move(game_state: typing.Dict) -> typing.Dict:
   # Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
   opponents = game_state['board']['snakes']
   others_heads = {}
+  others_cells = []
   for i in range(0, len(opponents)):
     snake = opponents[i]
     id = snake["id"] 
     if id != my_id:
       body = snake["body"]
       others_heads[i] = snake["head"]
+      for cell in body[:-2]:
+        others_cells.append(cell)
       check_others(body[:-1], my_head, is_move_safe)
   print(f"step 3 {is_move_safe}")
 
@@ -81,9 +84,11 @@ def move(game_state: typing.Dict) -> typing.Dict:
     return {"move": "down"}
 
   # Secondary check to prioritize the most safe moves
-  (dict1, is_safe_dict) = check_moves(safe_moves, my_head, my_neck, my_body, game_state, others_heads)
+  dict1 = check_moves(safe_moves, my_head, my_neck, my_body, game_state, others_heads)
   print(f"dict1 {dict1}")
+  
   priority_moves = sorted(dict1, key=dict1.get, reverse=True)
+  
   print(f"priority {priority_moves}")
   # Choose the safest moves from the ones available
   fst_choice  = priority_moves[0]
@@ -137,7 +142,7 @@ def move(game_state: typing.Dict) -> typing.Dict:
     new_head = move_position(next_move, my_head) 
     for fd in food:
       if (not eat and my_health > 40 and 
-          ((new_head["x"] == fd["x"] and new_head["y"] == fd["y"]) or is_next_to(new_head, fd))):
+          ((new_head["x"] == fd["x"] and new_head["y"] == fd["y"]) or is_next_to(new_head, fd, 1))):
         if next_move != snd_choice and snd_head is not None and dict1[snd_choice] >= dict1[next_move]: 
           next_move = snd_choice
           print(f"145 next: {next_move}")
@@ -198,14 +203,32 @@ def move(game_state: typing.Dict) -> typing.Dict:
     print(f"snd_cnt: {snd_cnt} thd_cnt:{thd_cnt}")
 
     # also avoid close to others
+    snd_others_cnt = 0
+    thd_others_cnt = 0
     if snd_cnt > 0:
-      if snd_cnt > thd_cnt:
-        next_move = snd_choice
-        print(f"194 next: {next_move}")
+      for c in others_cells:
+        if is_next_to(snd_head, c, 2):
+          snd_others_cnt += 1
+
     if thd_cnt > 0 and thd_cnt >= snd_cnt:
+      for c in others_cells:
+        if is_next_to(thd_head, c, 2):
+          thd_others_cnt += 1
+
+    if snd_ok and snd_others_cnt < thd_others_cnt:
+      next_move = snd_choice
+      print(f"220 next: {next_move}")
+    elif thd_ok and snd_others_cnt > thd_others_cnt:
       next_move = thd_choice
-      print(f"196 next: {next_move}")
-      
+      print(f"223 next: {next_move}")
+    elif snd_others_cnt == thd_others_cnt and snd_cnt > thd_cnt:
+      next_move = snd_choice
+      print(f"226 next: {next_move}")
+    elif thd_cnt > 0 and snd_others_cnt == thd_others_cnt and snd_cnt > thd_cnt:
+      next_move = thd_choice
+      print(f"223 next: {next_move}"
+
+    
   print(f"health:{my_health}")
   print(f"MOVE {game_state['turn']}: {next_move}")
   print('---------------------------------------')
@@ -263,7 +286,7 @@ def check_moves(moves, my_head, my_neck, my_body, game_state, others_heads):
     for index, head in others_heads.items():
       op_len = opponents[index]["length"]
       me_len = game_state["you"]["length"]
-      if is_next_to(new_head, head) and op_len >= me_len:
+      if is_next_to(new_head, head, 1) and op_len >= me_len:
         print(f"op:{op_len} vs me:{me_len}")
         danger = True
 
@@ -278,13 +301,13 @@ def check_moves(moves, my_head, my_neck, my_body, game_state, others_heads):
     else:
       dict[move] = cnt - 4 #-1 ~ -4
     
-    is_safe_dict[move] = is_move_safe
+    # is_safe_dict[move] = is_move_safe
     
-  return (dict, is_safe_dict)
+  return dict
 
 
-def is_next_to(self, next):
-  if (self["x"] == next["x"] and  abs(self["y"] - next["y"]) == 1) or (self["y"] == next["y"] and  abs(self["x"] - next["x"]) == 1):
+def is_next_to(self, next, dis):
+  if (self["x"] == next["x"] and  abs(self["y"] - next["y"]) == dis) or (self["y"] == next["y"] and  abs(self["x"] - next["x"]) == dis):
     return True
   else:
     return False
