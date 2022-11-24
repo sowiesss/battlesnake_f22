@@ -316,11 +316,10 @@ def check_moves(moves, my_head, my_neck, my_body, game_state, others_heads):
       for drct, is_safe in is_move_safe.items():
         if is_safe:
           cnt += 1
-          
-      if not danger:
-        dict[move] = cnt
-      else:
-        dict[move] = cnt - 4 #-1 ~ -4
+    if not danger:
+      dict[move] = cnt
+    else:
+      dict[move] = cnt - 4 #-1 ~ -4
     
     # is_safe_dict[move] = is_move_safe
     
