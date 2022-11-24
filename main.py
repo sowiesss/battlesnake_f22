@@ -92,7 +92,7 @@ def move(game_state: typing.Dict) -> typing.Dict:
   print(f"priority {priority_moves}")
   # Choose the safest moves from the ones available
   fst_choice  = priority_moves[0]
-  # fst_head = move_position(fst_choice, my_head) 
+  fst_head = move_position(fst_choice, my_head)
   snd_choice = None
   thd_choice = None
   snd_head = None
@@ -142,8 +142,9 @@ def move(game_state: typing.Dict) -> typing.Dict:
     new_head = move_position(next_move, my_head) 
     for fd in food:
       if (not eat and my_health > 40 and 
-          ((new_head["x"] == fd["x"] and new_head["y"] == fd["y"]) or is_next_to(new_head, fd, 1))):
-        if next_move != snd_choice and snd_head is not None and dict1[snd_choice] >= dict1[next_move]: 
+          ((new_head["x"] == fd["x"] and new_head["y"] == fd["y"]))):
+            #or is_next_to(new_head, fd, 1)
+        if next_move != snd_choice and snd_head is not None and dict1[snd_choice] >= dict1[next_move]:
           next_move = snd_choice
           print(f"145 next: {next_move}")
         elif next_move != thd_choice and thd_head is not None and dict1[thd_choice] >= dict1[next_move]:
@@ -151,13 +152,14 @@ def move(game_state: typing.Dict) -> typing.Dict:
           print(f"147 next: {next_move}")
         
   # avoid move into corner
-  if not eat and snd_head is not None and dict1[snd_choice] == dict1[next_move]:
+  if not eat and snd_head is not None and dict1[snd_choice] == dict1[fst_choice]:
     corner_avoid = {"up": False, "down": False, "left": False, "right": False}
+    fst_position = {"up": False, "down": False, "left": False, "right": False}
     snd_position = {"up": False, "down": False, "left": False, "right": False}
     thd_position = {"up": False, "down": False, "left": False, "right": False}
     snd_ok = False
     thd_ok = False
-    
+    new_head = move_position(next_move, my_head)
     if 0 <=new_head["x"] < 2:  
       corner_avoid["right"] = True
     if 9 <=new_head["x"] < game_state['board']['width']:
@@ -167,6 +169,17 @@ def move(game_state: typing.Dict) -> typing.Dict:
     if 9 <=new_head["y"] < game_state['board']['height']:
       corner_avoid["down"] = True
     print(f"coner_avoid: {corner_avoid}")
+
+    if next_move != fst_choice:
+      if fst_head["x"] > new_head["x"]: #fst is on the right of current option
+        fst_position["right"] = True
+      if fst_head["x"] < new_head["x"]:
+        fst_position["left"] = True
+      if fst_head["y"] < new_head["y"]:
+        fst_position["down"] = True
+      if fst_head["y"] > new_head["y"]:
+        fst_position["up"] = True
+      print(f"fst_position: {fst_position}")
     
     if next_move != snd_choice:
       snd_ok = True
@@ -179,6 +192,7 @@ def move(game_state: typing.Dict) -> typing.Dict:
       if snd_head["y"] > new_head["y"]:
         snd_position["up"] = True
       print(f"snd_position: {snd_position}")
+      
 
     if thd_choice is not None and next_move != thd_choice and dict1[thd_choice] == dict1[next_move]:
       thd_ok = True
@@ -194,8 +208,11 @@ def move(game_state: typing.Dict) -> typing.Dict:
 
     snd_cnt = 0
     thd_cnt = 0
+    fst_cnt = 0
     for move, need in corner_avoid.items():
       if need: # see if need to move to this direction
+        if next_move != fst_choice and fst_position[move]:
+          fst_cnt += 1
         if snd_ok and snd_position[move]:
           snd_cnt += 1
         if thd_ok and thd_position[move]:
@@ -205,6 +222,12 @@ def move(game_state: typing.Dict) -> typing.Dict:
     # also avoid close to others
     snd_others_cnt = 0
     thd_others_cnt = 0
+    fst_others_cnt = 0
+
+    for c in others_cells:
+        if is_next_to(fst_head, c, 2):
+          fst_others_cnt += 1
+    
     if snd_ok:
       for c in others_cells:
         if is_next_to(snd_head, c, 2):
@@ -214,8 +237,9 @@ def move(game_state: typing.Dict) -> typing.Dict:
       for c in others_cells:
         if is_next_to(thd_head, c, 2):
           thd_others_cnt += 1
-
-    if snd_ok and snd_others_cnt < thd_others_cnt:
+    if fst_others_cnt < snd_others_cnt:
+      next_move = fst_choice
+    elif snd_ok and snd_others_cnt < thd_others_cnt:
       next_move = snd_choice
       print(f"220 next: {next_move}")
     elif thd_ok and snd_others_cnt > thd_others_cnt:
@@ -264,7 +288,6 @@ def move_position(move_str, my_head):
 # Helper function that scores the safety of each potential move
 def check_moves(moves, my_head, my_neck, my_body, game_state, others_heads):
   dict = {}
-  is_safe_dict = {}
   for move in moves:
     is_move_safe = {"up": True, "down": True, "left": True, "right": True}
     new_head = move_position(move, my_head)
@@ -288,17 +311,16 @@ def check_moves(moves, my_head, my_neck, my_body, game_state, others_heads):
       if is_next_to(new_head, head, 1) and op_len >= me_len:
         print(f"op:{op_len} vs me:{me_len}")
         danger = True
-
-    # cnt len
-    cnt = 0
-    for drct, is_safe in is_move_safe.items():
-      if is_safe:
-        cnt += 1
-        
-    if not danger:
-      dict[move] = cnt
-    else:
-      dict[move] = cnt - 4 #-1 ~ -4
+      # cnt len
+      cnt = 0
+      for drct, is_safe in is_move_safe.items():
+        if is_safe:
+          cnt += 1
+          
+      if not danger:
+        dict[move] = cnt
+      else:
+        dict[move] = cnt - 4 #-1 ~ -4
     
     # is_safe_dict[move] = is_move_safe
     
