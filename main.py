@@ -67,8 +67,7 @@ def move(game_state: typing.Dict) -> typing.Dict:
     if id != my_id:
       body = snake["body"]
       others_heads[i] = snake["head"]
-      check_others(body, my_head, is_move_safe)
-      ###
+      check_others(body[:-1], my_head, is_move_safe)
   print(f"step 3 {is_move_safe}")
 
   # Are there any safe moves left?
@@ -82,13 +81,13 @@ def move(game_state: typing.Dict) -> typing.Dict:
     return {"move": "down"}
 
   # Secondary check to prioritize the most safe moves
-  dict1 = check_moves(safe_moves, my_head, my_neck, my_body, game_state, others_heads)
+  (dict1, is_safe_dict) = check_moves(safe_moves, my_head, my_neck, my_body, game_state, others_heads)
   print(f"dict1 {dict1}")
   priority_moves = sorted(dict1, key=dict1.get, reverse=True)
   print(f"priority {priority_moves}")
   # Choose the safest moves from the ones available
   fst_choice  = priority_moves[0]
-  fst_head = move_position(fst_choice, my_head) 
+  # fst_head = move_position(fst_choice, my_head) 
   snd_choice = None
   thd_choice = None
   snd_head = None
@@ -100,76 +99,113 @@ def move(game_state: typing.Dict) -> typing.Dict:
     thd_choice = priority_moves[2]
     thd_head = move_position(snd_choice, my_head)
     
-# avoid move into corner
   next_move = fst_choice
-  if snd_head is not None and dict1[snd_choice] >= dict1[fst_choice]:
-    if 0 <=fst_head["x"] < 2:  
-      if fst_choice != snd_choice and snd_head["x"] >fst_head["x"]:
-        next_move = snd_choice
-      elif thd_choice is not None and thd_head["x"] >fst_head["x"] and dict1[thd_choice] >= dict1[fst_choice]:
-        next_move = thd_choice
-  
-    if 9 <=fst_head["y"] < game_state['board']['height']:
-      if next_move != snd_choice and snd_head["y"] <fst_head["y"]:
-        next_move = snd_choice
-      elif thd_choice is not None and thd_head["y"] <fst_head["y"] and dict1[thd_choice] >= dict1[fst_choice]:
-        next_move = thd_choice 
-  
-    if 9 <=fst_head["x"] < game_state['board']['width']:
-      if next_move != snd_choice and snd_head["x"] <fst_head["x"]:
-        next_move = snd_choice
-      elif thd_choice is not None and thd_head["x"] <fst_head["x"] and dict1[thd_choice] >= dict1[fst_choice]:
-        next_move = thd_choice 
-  
-    if 0 <=fst_head["y"] < 2:
-      if next_move != snd_choice and snd_head["y"] >fst_head["y"]:
-        next_move = snd_choice
-      elif thd_choice is not None and thd_head["y"] >fst_head["y"] and dict1[thd_choice] >= dict1[fst_choice]:
-        next_move = thd_choice 
 
     # if dict1[next_move] == dict1[snd_choice] and next_move != snd_choice and next_move == "up":
     #   next_move = snd_choice
 
   # Step 4 - Move towards food to regain health and survive longer
   food = game_state['board']['food']
-  if not food:
-    return {"move": next_move}
+  if len(food) > 0:
+    food_dict={}
+    for i in range(0, len(food)):
+      f = food[i]
+      f_dis = abs(f["x"] - my_head["x"]) + abs(f["y"] - my_head["y"])
+      food_dict[i] = f_dis
+          
+    food_dict = sorted(food_dict, key=food_dict.get)
+    target_food_index = food_dict[0]
+    target_food = food[target_food_index]
+  
+    BUFFER = 35
+    if my_health <= (food_dict[target_food_index] + BUFFER) or my_health < 40:
+      eat = True
+      food_move = move_towards_food(target_food, my_head, is_move_safe, dict1)
+      if food_move is not None:
+        next_move = food_move
+      elif len(food_dict) > 1:
+        snd_food_index = food_dict[1]
+        if my_health <= food_dict[snd_food_index]: 
+          snd_food = food[snd_food_index]
+          food_move = move_towards_food(snd_food, my_head, is_move_safe, dict1)
+          if food_move is not None:
+            target_food = snd_food
+            next_move = food_move
+      print(f"food:{target_food}, move:{food_move}")
 
-  food_dict={}
-  for i in range(0, len(food)):
-    f = food[i]
-    f_dis = abs(f["x"] - my_head["x"]) + abs(f["y"] - my_head["y"])
-    food_dict[i] = f_dis
+    #avoid food or near food
+    new_head = move_position(next_move, my_head) 
+    for fd in food:
+      if (not eat and my_health > 40 and 
+          ((new_head["x"] == fd["x"] and new_head["y"] == fd["y"]) or is_next_to(new_head, fd))):
+        if next_move != snd_choice and snd_head is not None and dict1[snd_choice] >= dict1[next_move]: 
+          next_move = snd_choice
+          print(f"145 next: {next_move}")
+        elif next_move != thd_choice and thd_head is not None and dict1[thd_choice] >= dict1[next_move]:
+          next_move = thd_choice
+          print(f"147 next: {next_move}")
         
-  food_dict = sorted(food_dict, key=food_dict.get)
-  target_food_index = food_dict[0]
-  target_food = food[target_food_index]
+  # avoid move into corner
+  if not eat and snd_head is not None and dict1[snd_choice] == dict1[next_move]:
+    corner_avoid = {"up": False, "down": False, "left": False, "right": False}
+    snd_position = {"up": False, "down": False, "left": False, "right": False}
+    thd_position = {"up": False, "down": False, "left": False, "right": False}
+    snd_ok = False
+    thd_ok = False
+    
+    if 0 <=new_head["x"] < 2:  
+      corner_avoid["right"] = True
+    if 9 <=new_head["x"] < game_state['board']['width']:
+      corner_avoid["left"] = True
+    if 0 <=new_head["y"] < 2:
+      corner_avoid["up"] = True
+    if 9 <=new_head["y"] < game_state['board']['height']:
+      corner_avoid["down"] = True
+    print(f"coner_avoid: {corner_avoid}")
+    
+    if next_move != snd_choice:
+      snd_ok = True
+      if snd_head["x"] > new_head["x"]: #snd is on the right of current option
+        snd_position["right"] = True
+      if snd_head["x"] < new_head["x"]:
+        snd_position["left"] = True
+      if snd_head["y"] < new_head["y"]:
+        snd_position["down"] = True
+      if snd_head["y"] > new_head["y"]:
+        snd_position["up"] = True
+      print(f"snd_position: {snd_position}")
 
-  BUFFER = 30
-  if my_health <= (food_dict[target_food_index] + BUFFER) or my_health < 40:
-    eat = True
-    food_move = move_towards_food(target_food, my_head, is_move_safe, dict1)
-    if food_move is not None:
-      next_move = food_move
-    elif len(food_dict) > 1:
-      snd_food_index = food_dict[1]
-      if my_health <= food_dict[snd_food_index]: 
-        snd_food = food[snd_food_index]
-        food_move = move_towards_food(snd_food, my_head, is_move_safe, dict1)
-        if food_move is not None:
-          next_move = food_move
-    print(f"food:{target_food}, move:{food_move}")
+    if thd_choice is not None and next_move != thd_choice and dict1[thd_choice] == dict1[next_move]:
+      thd_ok = True
+      if thd_head["x"] > new_head["x"]: #thd is on the right of current option
+        thd_position["right"] = True
+      if thd_head["x"] < new_head["x"]:
+        thd_position["left"] = True
+      if thd_head["y"] < new_head["y"]:
+        thd_position["down"] = True
+      if thd_head["y"] > new_head["y"]:
+        thd_position["up"] = True
+      print(f"thd_position: {thd_position}")
 
-  #avoid food or near food
-  new_head = move_position(next_move, my_head) 
-  for fd in food:
-    if (not eat and my_health > 40 and 
-        ((new_head["x"] == fd["x"] and new_head["y"] == fd["y"]) or is_next_to(new_head, fd))):
-      if next_move != snd_choice and snd_head is not None and dict1[snd_choice] >= dict1[next_move]: 
+    snd_cnt = 0
+    thd_cnt = 0
+    for move, need in corner_avoid.items():
+      if need: # see if need to move to this direction
+        if snd_ok and snd_position[move]:
+          snd_cnt += 1
+        if thd_ok and thd_position[move]:
+          thd_cnt += 1
+    print(f"snd_cnt: {snd_cnt} thd_cnt:{thd_cnt}")
+
+    # also avoid close to others
+    if snd_cnt > 0:
+      if snd_cnt > thd_cnt:
         next_move = snd_choice
-      elif next_move != thd_choice and thd_head is not None and dict1[thd_choice] >= dict1[next_move]:
-        next_move = thd_choice
-        
+        print(f"194 next: {next_move}")
+    if thd_cnt > 0 and thd_cnt >= snd_cnt:
+      next_move = thd_choice
+      print(f"196 next: {next_move}")
+      
   print(f"health:{my_health}")
   print(f"MOVE {game_state['turn']}: {next_move}")
   print('---------------------------------------')
@@ -202,13 +238,11 @@ def move_position(move_str, my_head):
       new_head = {"x": my_head["x"] + 1, "y": my_head["y"]}
 
   return new_head
-  
-
 
 # Helper function that scores the safety of each potential move
 def check_moves(moves, my_head, my_neck, my_body, game_state, others_heads):
   dict = {}
-
+  is_safe_dict = {}
   for move in moves:
     is_move_safe = {"up": True, "down": True, "left": True, "right": True}
     new_head = move_position(move, my_head)
@@ -220,19 +254,33 @@ def check_moves(moves, my_head, my_neck, my_body, game_state, others_heads):
 
     opponents = game_state['board']['snakes']
     for snake in opponents:
-      body = snake["body"]
-      check_others(body[:-1], my_head, is_move_safe) # skip tail
+      id = snake["id"] 
+      if id != game_state["you"]["id"]:
+        body = snake["body"]
+        check_others(body[:-1], my_head, is_move_safe)
 
     danger = False
     for index, head in others_heads.items():
-      if is_next_to(new_head, head) and opponents[i]["length"] >= game_state["you"]["length"]:
+      op_len = opponents[index]["length"]
+      me_len = game_state["you"]["length"]
+      if is_next_to(new_head, head) and op_len >= me_len:
+        print(f"op:{op_len} vs me:{me_len}")
         danger = True
 
+    # cnt len
+    cnt = 0
+    for drct, is_safe in is_move_safe.items():
+      if is_safe:
+        cnt += 1
+        
     if not danger:
-      dict[move] = len(list(filter(lambda x: x == True, is_move_safe.values())))
+      dict[move] = cnt
     else:
-      dict[move] = len(list(filter(lambda x: x == True, is_move_safe.values()))) - 4 #-1 ~ -4
-  return dict
+      dict[move] = cnt - 4 #-1 ~ -4
+    
+    is_safe_dict[move] = is_move_safe
+    
+  return (dict, is_safe_dict)
 
 
 def is_next_to(self, next):
@@ -253,6 +301,7 @@ def check_others(moves: typing.Dict, my_head: typing.Dict, is_move_safe: typing.
       is_move_safe["up"] = False
     if cell["y"] == my_head["y"] - 1 and cell["x"] == my_head["x"]:
       is_move_safe["down"] = False
+    # print(f"cell{cell} is_safe: {is_move_safe}")
 
 
 # Helper function that prevents snake from colliding with itself
@@ -285,7 +334,7 @@ def check_wall(my_head, game_state, is_move_safe):
     is_move_safe["down"] = False
   if my_head["y"] == game_state['board']['height'] - 1:
     is_move_safe["up"] = False
-  print(f"step 1 {is_move_safe}")
+  # print(f"step 1 {is_move_safe}")
 
 
 # Start server when `python main.py` is run
