@@ -97,22 +97,25 @@ def move(game_state: typing.Dict) -> typing.Dict:
     return {"move": next_move}
 
   food_dict={}
-  for f in food:
+  for i in range(0, len(food)):
+    f = food[i]
     f_dis = abs(f["x"] - my_head["x"]) + abs(f["y"] - my_head["y"])
-    food_dict[f] = f_dis
+    food_dict[i] = f_dis
 
   food_dict = sorted(food_dict, key=food_dict.get)
-  target_food = food_dict.keys()[0]
+  target_food_index = food_dict[0]
+  target_food = food[target_food_index]
 
-  BUFFER = 30
+  BUFFER = 20
   print('---------------------------------------')
-  if my_health <= (food_dict[target_food] + BUFFER):
+  if my_health <= (food_dict[target_food_index] + BUFFER):
     eat = True
-    snd_food = food_dict.keys()[1]
+    snd_food_index = food_dict[1]
+    snd_food = food[snd_food_index]
     food_move = move_towards_food(target_food, my_head, is_move_safe, dict1)
     if food_move is not None:
       next_move = food_move
-    elif my_health <= food_dict[snd_food] : 
+    elif my_health <= food_dict[snd_food_index] : 
       food_move = move_towards_food(snd_food, my_head, is_move_safe, dict1)
       if food_move is not None:
         next_move = food_move
@@ -121,10 +124,11 @@ def move(game_state: typing.Dict) -> typing.Dict:
 # avoid food if not hungry
   for fd in food:
     new_head = move_position(next_move, my_head)
-    snd_choice = priority_moves[1]
-    if new_head["x"] == f["x"] and new_head["y"] == f["y"] and not eat and my_health > 30 and dict[snd_choice] > 1:
-      next_move = snd_choice
-  
+    if len(priority_moves) > 1:
+      snd_choice = priority_moves[1]
+      if new_head["x"] == fd["x"] and new_head["y"] == fd["y"] and not eat and my_health > 20 and dict1[snd_choice] > 1:
+        next_move = snd_choice
+  print(f"health:{my_health}")
   print(f"MOVE {game_state['turn']}: {next_move}")
   return {"move": next_move}
 
@@ -133,13 +137,13 @@ def move(game_state: typing.Dict) -> typing.Dict:
 
 def move_towards_food(target_food, my_head, is_move_safe, dict1):
   next_move = None
-  if target_food[0] > my_head["x"] and is_move_safe["right"] and dict1["right"] > 1:
+  if target_food["x"] > my_head["x"] and is_move_safe["right"] and "right" in dict1.keys() and dict1["right"] > 1:
     next_move = "right"
-  elif target_food[0] < my_head["x"] and is_move_safe["left"] and dict1["left"] > 1:
+  elif target_food["x"] < my_head["x"] and is_move_safe["left"] and "left" in dict1.keys() and dict1["left"] > 1:
     next_move = "left"
-  elif target_food[1] > my_head["y"] and is_move_safe["up"] and dict1["up"] > 1:
+  elif target_food["y"] > my_head["y"] and is_move_safe["up"] and "up" in dict1.keys() and dict1["up"] > 1:
     next_move = "up"
-  elif target_food[1] < my_head["y"] and is_move_safe["down"] and dict1["down"] > 1:
+  elif target_food["y"] < my_head["y"] and is_move_safe["down"] and "down" in dict1.keys() and dict1["down"] > 1:
     next_move = "down"
 
   return next_move
@@ -178,7 +182,7 @@ def check_moves(moves, my_head, my_neck, my_body, game_state, others_heads):
       check_others(body, my_head, is_move_safe)
 
     danger = False
-    for id, head in others_heads:
+    for id, head in others_heads.items():
       if is_next_to(new_head, head):
         danger = True
 
