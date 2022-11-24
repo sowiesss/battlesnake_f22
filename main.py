@@ -288,7 +288,6 @@ def move_position(move_str, my_head):
 # Helper function that scores the safety of each potential move
 def check_moves(moves, my_head, my_neck, my_body, game_state, others_heads):
   dict = {}
-  cnt = 0
   for move in moves:
     is_move_safe = {"up": True, "down": True, "left": True, "right": True}
     new_head = move_position(move, my_head)
@@ -314,10 +313,10 @@ def check_moves(moves, my_head, my_neck, my_body, game_state, others_heads):
         print(f"op:{op_len} vs me:{me_len}")
         danger = True
       # cnt len
-      cnt = 0
-      for drct, is_safe in is_move_safe.items():
-        if is_safe:
-          cnt += 1
+    cnt = 0
+    for drct, is_safe in is_move_safe.items():
+      if is_safe:
+        cnt += 1
     if not danger:
       dict[move] = cnt
     else:
