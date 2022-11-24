@@ -102,29 +102,29 @@ def move(game_state: typing.Dict) -> typing.Dict:
     
 # avoid move into corner
   next_move = fst_choice
-  if snd_head is not None and dict1[snd_choice] > 1:
+  if snd_head is not None and dict1[snd_choice] >= dict1[fst_choice]:
     if 0 <=fst_head["x"] < 2:  
       if fst_choice != snd_choice and snd_head["x"] >fst_head["x"]:
         next_move = snd_choice
-      elif thd_choice is not None and thd_head["x"] >fst_head["x"] and dict1[thd_choice] > 1:
+      elif thd_choice is not None and thd_head["x"] >fst_head["x"] and dict1[thd_choice] >= dict1[fst_choice]:
         next_move = thd_choice
   
     if 9 <=fst_head["y"] < game_state['board']['height']:
       if next_move != snd_choice and snd_head["y"] <fst_head["y"]:
         next_move = snd_choice
-      elif thd_choice is not None and thd_head["y"] <fst_head["y"] and dict1[thd_choice] > 1:
+      elif thd_choice is not None and thd_head["y"] <fst_head["y"] and dict1[thd_choice] >= dict1[fst_choice]:
         next_move = thd_choice 
   
     if 9 <=fst_head["x"] < game_state['board']['width']:
       if next_move != snd_choice and snd_head["x"] <fst_head["x"]:
         next_move = snd_choice
-      elif thd_choice is not None and thd_head["x"] <fst_head["x"] and dict1[thd_choice] > 1:
+      elif thd_choice is not None and thd_head["x"] <fst_head["x"] and dict1[thd_choice] >= dict1[fst_choice]:
         next_move = thd_choice 
   
     if 0 <=fst_head["y"] < 2:
       if next_move != snd_choice and snd_head["y"] >fst_head["y"]:
         next_move = snd_choice
-      elif thd_choice is not None and thd_head["y"] >fst_head["y"] and dict1[thd_choice] > 1:
+      elif thd_choice is not None and thd_head["y"] >fst_head["y"] and dict1[thd_choice] >= dict1[fst_choice]:
         next_move = thd_choice 
 
     # if dict1[next_move] == dict1[snd_choice] and next_move != snd_choice and next_move == "up":
@@ -163,7 +163,7 @@ def move(game_state: typing.Dict) -> typing.Dict:
   #avoid food or near food
   new_head = move_position(next_move, my_head) 
   for fd in food:
-    if (not eat and my_health > 50 and 
+    if (not eat and my_health > 40 and 
         ((new_head["x"] == fd["x"] and new_head["y"] == fd["y"]) or is_next_to(new_head, fd))):
       if next_move != snd_choice and snd_head is not None and dict1[snd_choice] >= dict1[next_move]: 
         next_move = snd_choice
@@ -224,8 +224,8 @@ def check_moves(moves, my_head, my_neck, my_body, game_state, others_heads):
       check_others(body[:-1], my_head, is_move_safe) # skip tail
 
     danger = False
-    for head in others_heads:
-      if is_next_to(new_head, head):
+    for index, head in others_heads.items():
+      if is_next_to(new_head, head) and opponents[i]["length"] >= game_state["you"]["length"]:
         danger = True
 
     if not danger:
